@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRCTC Clone - Offline Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fc;
+            color: #333;
+        }
+        .navbar {
+            background-color: #2a41e8; 
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden; 
+        }
+        .sidebar {
+            width: 200px;
+            background-color: #eef1f7;
+            padding: 25px;
+            font-size: 0.95em;
+            border-right: 1px solid #ddd;
+        }
+        .sidebar h3 {
+            color: #2a41e8;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        .main-content {
+            flex: 1; 
+            padding: 30px;
+        }
+        .main-content h2 {
+            text-align: center;
+            color: #003366; 
+            margin-bottom: 25px;
+            font-size: 1.6em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.2s ease-in-out;
+        }
+        .form-group input:focus {
+            border-color: #2a41e8;
+            outline: none;
+        }
+    
+        .btn {
+            background-color: #fb792b; 
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn:hover {
+            background-color: #e6681a; 
+        }
+        #train-list-container {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        #train-list-container h3 {
+            margin-bottom: 15px;
+            color: #003366;
+        }
+        .train-item {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; 
+            
+        }
+        .train-details {
+            flex-basis: 70%; 
+        }
+         .train-details strong {
+            color: #2a41e8;
+            font-size: 1.1em;
+         }
+        .train-times {
+            flex-basis: 25%;
+            text-align: right;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .status-message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            text-align: center;
+            background-color: #eef1f7;
+            color: #555;
+        }
+        .status-error {
+            background-color: #fce0e0;
+            color: #db3b3b;
+        }
+        .status-no-results {
+            background-color: #fcf8e0;
+            color: #c0a051;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="navbar">Indian Railways Clone</div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h3>Options & Services</h3>
+            <ul>
+                <li>PNR Status</li>
+                <li>Chart / Vacancy</li>
+                <li>Cancelled Trains</li>
+                <li>Live Station</li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <h2>Find Trains Between Stations</h2>
+            <div class="form-group">
+                <label for="from-station">From:</label>
+                <input type="text" id="from-station" placeholder="Enter starting station code (e.g., NDLS)">
+            </div>
+            <div class="form-group">
+                <label for="to-station">To:</label>
+                <input type="text" id="to-station" placeholder="Enter destination station code (e.g., BCT)">
+            </div>
+            <div class="form-group">
+                <label for="journey-date">Date:</label>
+                <input type="date" id="journey-date">
+            </div>
+            <button class="btn" id="search-btn">Search Trains</button>
+
+            <div id="train-list-container">
+                 <h3>Available Trains</h3>
+                 <div id="train-list">
+                     <p class="status-message">Please enter stations and date to find trains.</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fromInput = document.getElementById('from-station');
+        const toInput = document.getElementById('to-station');
+        const dateInput = document.getElementById('journey-date');
+        const searchButton = document.getElementById('search-btn');
+        const trainListDiv = document.getElementById('train-list');
+
+        const STATIONS = {
+            "NDLS": "New Delhi",
+            "MTJ": "Mathura Jn",
+            "AGC": "Agra Cantt",
+            "GWL": "Gwalior Jn",
+            "BPL": "Bhopal Jn",
+            "NZM": "Hazrat Nizamuddin",
+            "JL": "Jalgaon Jn",
+            "CSMT": "Mumbai CSMT",
+            "KOTA": "Kota Jn",
+            "BRC": "Vadodara Jn",
+            "ST": "Surat",
+            "BCT": "Mumbai Central"
+        };
+
+        
+        const TRAINS = [
+            {
+                "train_no": "12001",
+                "train_name": "SHATABDI EXP",
+                "runs_on_days": [0, 1, 2, 3, 5, 6],
+                "route": [
+                    {"station_code": "NDLS", "arrival_time": null, "departure_time": "06:00", "day": 1, "sequence": 1},
+                    {"station_code": "MTJ", "arrival_time": "07:19", "departure_time": "07:21", "day": 1, "sequence": 2},
+                    {"station_code": "AGC", "arrival_time": "08:06", "departure_time": "08:11", "day": 1, "sequence": 3},
+                    {"station_code": "GWL", "arrival_time": "09:41", "departure_time": "09:43", "day": 1, "sequence": 4},
+                    {"station_code": "BPL", "arrival_time": "14:05", "departure_time": null, "day": 1, "sequence": 5},
+                ]
+            },
+            {
+                "train_no": "22222",
+                "train_name": "CSMT RAJDHANI",
+                "runs_on_days": [0, 1, 2, 3, 4, 5, 6], 
+                "route": [
+                    {"station_code": "NZM", "arrival_time": null, "departure_time": "17:15", "day": 1, "sequence": 1},
+                    {"station_code": "AGC", "arrival_time": "19:03", "departure_time": "19:05", "day": 1, "sequence": 2},
+                    {"station_code": "BPL", "arrival_time": "00:05", "departure_time": "00:10", "day": 2, "sequence": 3},
+                    {"station_code": "JL", "arrival_time": "05:48", "departure_time": "05:50", "day": 2, "sequence": 4},
+                    {"station_code": "CSMT", "arrival_time": "11:50", "departure_time": null, "day": 2, "sequence": 5},
+                ]
+            },
+             {
+                "train_no": "12952",
+                "train_name": "MUMBAI RAJDHANI",
+                "runs_on_days": [0, 1, 2, 3, 4, 5, 6], 
+                "route": [
+                    {"station_code": "NDLS", "arrival_time": null, "departure_time": "16:55", "day": 1, "sequence": 1},
+                    {"station_code": "KOTA", "arrival_time": "21:30", "departure_time": "21:40", "day": 1, "sequence": 2},
+                    {"station_code": "BRC", "arrival_time": "03:40", "departure_time": "03:50", "day": 2, "sequence": 3},
+                    {"station_code": "ST", "arrival_time": "05:28", "departure_time": "05:33", "day": 2, "sequence": 4},
+                    {"station_code": "BCT", "arrival_time": "08:35", "departure_time": null, "day": 2, "sequence": 5},
+                ]
+            }
+            // Add more static train data here if needed
+        ];
+        
+
+
+        
+        function getDayOfWeek_MonIsZero(dateStr) {
+            try {
+                
+                const dateObj = new Date(dateStr + 'T00:00:00');
+                const day = dateObj.getDay(); 
+                return (day === 0) ? 6 : day - 1; 
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                return null; 
+            }
+        }
+
+
+        function searchTrains() {
+            const fromStationCode = fromInput.value.trim().toUpperCase();
+            const toStationCode = toInput.value.trim().toUpperCase();
+            const journeyDateStr = dateInput.value; 
+
+            
+            if (!fromStationCode || !toStationCode || !journeyDateStr) {
+                trainListDiv.innerHTML = `<p class="status-message status-error">Please fill in From Station, To Station, and Date.</p>`;
+                return;
+            }
+
+            const journeyDayOfWeek = getDayOfWeek_MonIsZero(journeyDateStr);
+            if (journeyDayOfWeek === null) {
+                trainListDiv.innerHTML = `<p class="status-message status-error">Invalid Date selected.</p>`;
+                return;
+            }
+
+            
+            const foundTrains = [];
+            for (const train of TRAINS) {
+                if (!train.runs_on_days.includes(journeyDayOfWeek)) {
+                    continue; 
+                }
+
+                
+                let fromStop = null;
+                let toStop = null;
+                for (const stop of train.route) {
+                    if (stop.station_code === fromStationCode) {
+                        fromStop = stop;
+                    }
+                    if (stop.station_code === toStationCode) {
+                        toStop = stop;
+                    }
+                    
+                }
+
+                
+                if (fromStop && toStop && fromStop.sequence < toStop.sequence) {
+                    
+                    foundTrains.push({
+                        train_no: train.train_no,
+                        train_name: train.train_name,
+                        departure_time: fromStop.departure_time,
+                        arrival_time: toStop.arrival_time,
+                        from_station_name: STATIONS[fromStationCode] || fromStationCode,
+                        to_station_name: STATIONS[toStationCode] || toStationCode
+                        
+                    });
+                }
+            }
+
+            
+            trainListDiv.innerHTML = ""; 
+
+            if (foundTrains.length === 0) {
+                trainListDiv.innerHTML = `<p class="status-message status-no-results">No direct trains found in the local data for this route and date.</p>`;
+            } else {
+                foundTrains.forEach(train => {
+                    const trainItem = document.createElement('div');
+                    trainItem.classList.add('train-item');
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.classList.add('train-details');
+                    detailsDiv.innerHTML = `
+                        <strong>${train.train_name || 'N/A'}</strong> (${train.train_no || 'N/A'})
+                        <br><small>${train.from_station_name} -> ${train.to_station_name}</small>
+                    `;
+
+                    const timesDiv = document.createElement('div');
+                    timesDiv.classList.add('train-times');
+                    timesDiv.innerHTML = `
+                        Dep: ${train.departure_time || '--:--'} | Arr: ${train.arrival_time || '--:--'}
+                    `;
+
+                    trainItem.appendChild(detailsDiv);
+                    trainItem.appendChild(timesDiv);
+                    trainListDiv.appendChild(trainItem);
+                });
+            }
+        }
+
+        
+        searchButton.addEventListener('click', searchTrains);
+
+    </script>
+</body>
+</html>

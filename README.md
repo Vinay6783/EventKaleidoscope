@@ -1,2 +1,3 @@
 # EventKaleidoscope
-This is a group project for web programming
+This is a group project for web programming and python
+
